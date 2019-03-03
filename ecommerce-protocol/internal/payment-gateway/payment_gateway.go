@@ -1,54 +1,37 @@
 package main
 
 import (
-	"fmt"
 	"crypto/dsa"
-	"crypto/rand"
+	"fmt"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/config"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/ecrypto/signature"
 	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/payment-gateway/http-api"
-	"os"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/payment-gateway/server-context"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/payment-gateway/tcp-server"
+	"github.com/tkanos/gonfig"
+	"sync"
 )
 
 var privateKey *dsa.PrivateKey
-
-func generatePrivateKey() {
-	params := new(dsa.Parameters)
-
-	// see http://golang.org/pkg/crypto/dsa/#ParameterSizes
-	if err := dsa.GenerateParameters(params, rand.Reader, dsa.L1024N160); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	privateKey = new(dsa.PrivateKey)
-	privateKey.PublicKey.Parameters = *params
-	err := dsa.GenerateKey(privateKey, rand.Reader) // this generates a public & private key pair
-	if err != nil {
-		panic(err)
-	}
-	//fmt.Printf("Generated Private Key: %X\n", privateKey)
-}
+var portConfig config.PortConfig
 
 func main() {
 	fmt.Println("Starting Payment Gateway ...")
-	generatePrivateKey()
-	ctx := http_api.HTTPApiContext{PrivateKey: privateKey}
+	privateKey, err := signature.GenerateDSAKeyPair()
+	if err != nil {
+		panic(err)
+	}
+
+	gonfig.GetConf("../../config/app_ports.json", &portConfig)
+	var ctx server_context.PGServerContext
+	ctx.PGPrivateKey = privateKey
+	ctx.HttpPort = portConfig.PaymentGatewayHttp
+	ctx.TcpPort = portConfig.PaymentGatewayTcp
+	ctx.WaitGroup = new(sync.WaitGroup)
+	ctx.WaitGroup.Add(2)
+
 	http_api.StartHTTPApiHandler(&ctx)
-
-	/*
-		ln, _ := net.Listen("tcp", ":12345")
-
-		for {
-			conn, _ := ln.Accept()
-			decoder := json.NewDecoder(conn)
-			var message signature.SignedData
-			decoder.Decode(&message)
-			fmt.Println(string(message.Data))
-
-			verification, _ := signature.Verify(message.Signature)
-			if verification {
-				fmt.Println("Verification OK")
-			}
-		}
-	*/
+	tcp_server.StartTCPServer(&ctx)
+	ctx.WaitGroup.Wait()
 
 }

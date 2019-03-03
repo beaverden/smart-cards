@@ -1,10 +1,10 @@
 package http_api
 
 import (
-	"net/http"
 	"encoding/json"
-	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/ecrypto/signature"
 	"fmt"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/ecrypto/signature"
+	"net/http"
 )
 
 func signApiHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +27,7 @@ func signApiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Printf("Signing message: %v\n", string(message.Data))
 
-	messageSignature, err := signature.Sign(message.Data, HttpContext.PrivateKey)
+	messageSignature, err := signature.Sign(message.Data, ServerContext.PGPrivateKey)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Unable to sign message"))

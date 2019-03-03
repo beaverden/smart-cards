@@ -1,18 +1,21 @@
 package http_api
 
 import (
-	"crypto/dsa"
+	"fmt"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/payment-gateway/server-context"
 	"net/http"
 )
 
-type HTTPApiContext struct {
-	PrivateKey *dsa.PrivateKey
-}
-var HttpContext *HTTPApiContext
+var ServerContext *server_context.PGServerContext
 
+func StartHTTPApiHandler(ctx *server_context.PGServerContext) {
+	ServerContext = ctx
+	go func() {
+		defer fmt.Println("HTTP Api Done")
+		defer ctx.WaitGroup.Done()
 
-func StartHTTPApiHandler(ctx *HTTPApiContext) {
-	HttpContext = ctx
-	http.HandleFunc("/signSegment", signApiHandler)
-	http.ListenAndServe(":12345", nil)
+		http.HandleFunc("/signSegment", signApiHandler)
+		fmt.Printf("Listening on http -> http://localhost%s\n", ctx.HttpPort)
+		http.ListenAndServe(ctx.HttpPort, nil)
+	}()
 }

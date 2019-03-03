@@ -4,9 +4,9 @@ import (
 	"crypto/dsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"github.com/pkg/errors"
 	"math/big"
-	"encoding/json"
 )
 
 type DSASignature struct {
@@ -44,4 +44,21 @@ func Sign(data interface{}, key *dsa.PrivateKey) (*DSASignature, error) {
 func Verify(signature *DSASignature) (bool, error) {
 	status := dsa.Verify(&signature.PubKey, signature.Hash, signature.R, signature.S)
 	return status, nil
+}
+
+func GenerateDSAKeyPair() (*dsa.PrivateKey, error) {
+	params := new(dsa.Parameters)
+
+	// see http://golang.org/pkg/crypto/dsa/#ParameterSizes
+	if err := dsa.GenerateParameters(params, rand.Reader, dsa.L1024N160); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	privateKey := new(dsa.PrivateKey)
+	privateKey.PublicKey.Parameters = *params
+	err := dsa.GenerateKey(privateKey, rand.Reader) // this generates a public & private key pair
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return privateKey, nil
 }

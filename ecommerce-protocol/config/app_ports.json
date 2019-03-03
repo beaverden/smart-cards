@@ -1,0 +1,5 @@
+{
+  "merchant_port": ":12345",
+  "payment_gateway_tcp": ":12346",
+  "payment_gateway_http": ":12347"
+}
