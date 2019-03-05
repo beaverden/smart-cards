@@ -22,14 +22,21 @@ type SignedData struct {
 }
 
 func Sign(data interface{}, key *dsa.PrivateKey) (*DSASignature, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	var jsonData []byte
+	switch data.(type) {
+	default:
+		var err error
+		jsonData, err = json.Marshal(data)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	case []byte:
+		jsonData = data.([]byte)
 	}
-	hashAlgo := sha256.New()
-	hashAlgo.Write(jsonData)
-	dataChecksum := hashAlgo.Sum(nil)
-	r, s, err := dsa.Sign(rand.Reader, key, dataChecksum)
+
+	dataChecksum := sha256.Sum256(jsonData)
+	//fmt.Printf("Signing hash: %v\n", dataChecksum[:])
+	r, s, err := dsa.Sign(rand.Reader, key, dataChecksum[:])
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -37,12 +44,26 @@ func Sign(data interface{}, key *dsa.PrivateKey) (*DSASignature, error) {
 	sig.R = r
 	sig.S = s
 	sig.PubKey = key.PublicKey
-	sig.Hash = dataChecksum
+	sig.Hash = dataChecksum[:]
 	return &sig, nil
 }
 
-func Verify(signature *DSASignature) (bool, error) {
-	status := dsa.Verify(&signature.PubKey, signature.Hash, signature.R, signature.S)
+func Verify(signature *DSASignature, data interface{}) (bool, error) {
+	var jsonData []byte
+	switch data.(type) {
+	default:
+		var err error
+		jsonData, err = json.Marshal(data)
+		if err != nil {
+			return false, errors.WithStack(err)
+		}
+	case []byte:
+		jsonData = data.([]byte)
+
+	}
+	hash := sha256.Sum256(jsonData)
+	//fmt.Printf("Verifiyng hash: %v\n", hash[:])
+	status := dsa.Verify(&signature.PubKey, hash[:], signature.R, signature.S)
 	return status, nil
 }
 

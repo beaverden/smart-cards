@@ -1,19 +1,18 @@
 package protocol
 
 import (
-	"crypto"
 	"crypto/rsa"
 	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/ecrypto/signature"
 )
 
 type MerchantData struct {
 	Name           string
-	MerchantPubKey crypto.PublicKey
+	MerchantPubKey *rsa.PublicKey
 }
 
 type WebSegment struct {
 	MerchantInfo MerchantData
-	Signature    signature.DSASignature
+	Signature    *signature.DSASignature
 }
 
 type PaymentInfo struct {

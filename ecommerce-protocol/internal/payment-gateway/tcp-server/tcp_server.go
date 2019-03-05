@@ -1,7 +1,6 @@
 package tcp_server
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/beaverden/smart-cards/ecommerce-protocol/internal/payment-gateway/server-context"
 	"net"
@@ -12,8 +11,8 @@ var ServerContext *server_context.PGServerContext
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	// 4. Recv {PM, SigM(Sid, PubKC, Amount)}_PubKPG
-	encoder := json.NewEncoder(conn)
-	decoder := json.NewDecoder(conn)
+	//encoder := json.NewEncoder(conn)
+	//decoder := json.NewDecoder(conn)
 
 }
 
@@ -28,7 +27,7 @@ func StartTCPServer(ctx *server_context.PGServerContext) {
 		for {
 			conn, _ := ln.Accept()
 			fmt.Printf("Got a tcp connection: %v\n", conn.RemoteAddr())
-			go handleConnection(&conn)
+			go handleConnection(conn)
 		}
 	}()
 
