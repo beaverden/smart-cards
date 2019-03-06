@@ -1,27 +1,29 @@
 package signature
 
 import (
+	"crypto"
 	"crypto/dsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
-type DSASignature struct {
-	Hash   []byte
-	R      *big.Int
-	S      *big.Int
-	PubKey dsa.PublicKey
+type RSASignature struct {
+	Signature []byte
 }
 
 type SignedData struct {
 	Data      []byte
-	Signature *DSASignature
+	Signature *RSASignature
 }
 
-func Sign(data interface{}, key *dsa.PrivateKey) (*DSASignature, error) {
+// Signs any data that can be marshaled with json
+// If the data parameter is already []byte, it won't be marshaled
+// Signs with the hash of the resulting []byte array
+// Returns a pointer to a signature
+func Sign(data interface{}, key *rsa.PrivateKey) (*RSASignature, error) {
 	var jsonData []byte
 	switch data.(type) {
 	default:
@@ -36,19 +38,20 @@ func Sign(data interface{}, key *dsa.PrivateKey) (*DSASignature, error) {
 
 	dataChecksum := sha256.Sum256(jsonData)
 	//fmt.Printf("Signing hash: %v\n", dataChecksum[:])
-	r, s, err := dsa.Sign(rand.Reader, key, dataChecksum[:])
+	signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, dataChecksum[:])
+	//r, s, err := dsa.Sign(rand.Reader, key, dataChecksum[:])
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	var sig DSASignature
-	sig.R = r
-	sig.S = s
-	sig.PubKey = key.PublicKey
-	sig.Hash = dataChecksum[:]
+	var sig RSASignature
+	sig.Signature = signature
 	return &sig, nil
 }
 
-func Verify(signature *DSASignature, data interface{}) (bool, error) {
+// Verifies a PKCS1v15 RSA signature against any data that can be marshaled with json
+// If the data parameter is already []byte, it won't be marshaled
+// It will hash the resulting []byte array and verify the signature
+func Verify(signature *RSASignature, pubK *rsa.PublicKey, data interface{}) (bool, error) {
 	var jsonData []byte
 	switch data.(type) {
 	default:
@@ -59,12 +62,14 @@ func Verify(signature *DSASignature, data interface{}) (bool, error) {
 		}
 	case []byte:
 		jsonData = data.([]byte)
-
 	}
+
 	hash := sha256.Sum256(jsonData)
-	//fmt.Printf("Verifiyng hash: %v\n", hash[:])
-	status := dsa.Verify(&signature.PubKey, hash[:], signature.R, signature.S)
-	return status, nil
+	err := rsa.VerifyPKCS1v15(pubK, crypto.SHA256, hash[:], signature.Signature)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	return true, nil
 }
 
 func GenerateDSAKeyPair() (*dsa.PrivateKey, error) {

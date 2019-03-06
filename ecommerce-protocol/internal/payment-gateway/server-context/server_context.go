@@ -1,13 +1,13 @@
 package server_context
 
 import (
-	"crypto/dsa"
+	"crypto/rsa"
+	"github.com/beaverden/smart-cards/ecommerce-protocol/config"
 	"sync"
 )
 
 type PGServerContext struct {
-	HttpPort     string
-	TcpPort      string
-	PGPrivateKey *dsa.PrivateKey
+	Config       config.AppConfig
+	PGPrivateKey *rsa.PrivateKey
 	WaitGroup    *sync.WaitGroup
 }
