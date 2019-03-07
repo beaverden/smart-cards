@@ -20,6 +20,7 @@ type SessionContext struct {
 	Encoder      *json.Encoder
 	SessionID    protocol.SID
 	SessionNonce []byte
+	PaymentInfo  *protocol.PaymentInfo
 
 	MerchantPubK *rsa.PublicKey
 	PGPubK       *rsa.PublicKey
@@ -74,7 +75,7 @@ func GetTransactionSid(context *SessionContext) {
 }
 
 func SendTransactionInfo(context *SessionContext) {
-	amount := 1.0
+	amount := 11.0
 
 	paymentInfo := protocol.PaymentInfo{
 		Sid:     context.SessionID,
@@ -85,7 +86,8 @@ func SendTransactionInfo(context *SessionContext) {
 		M:       context.WebSegment.MerchantInfo.Name,
 		PubKC:   &context.RsaKey.PublicKey}
 
-	context.SessionNonce = make([]byte, 2084)
+	context.PaymentInfo = &paymentInfo
+	context.SessionNonce = make([]byte, context.config.RsaBits)
 	_, err := rand.Read(context.SessionNonce)
 	paymentInfo.NC = context.SessionNonce
 
@@ -124,6 +126,18 @@ func ReceivePGResponse(context *SessionContext) {
 		return
 	}
 	fmt.Printf("6. Got PG Response: %v\n", pgResponse.Resp)
+	signedFields := protocol.PaymentGatewayResponseSignedFields{
+		Resp:   pgResponse.Resp,
+		Sid:    context.SessionID,
+		Amount: context.PaymentInfo.Amount,
+		NC:     context.SessionNonce}
+	verification, _ := signature.Verify(pgResponse.DigitalSignature, context.PGPubK, &signedFields)
+	if !verification {
+		fmt.Println("6. PG Signature did not verify")
+		return
+	} else {
+		fmt.Println("6. PG Nonce OK!")
+	}
 }
 
 func main() {

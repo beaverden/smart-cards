@@ -38,8 +38,13 @@ func GenerateCryptoParams(context *server_context.PGServerContext) {
 	context.PGPrivateKey = privateKeyImported
 }
 
+func SetupCards() {
+	payments.ValidCards = append(payments.ValidCards, payments.Card{CardN: "123456789ABC", CardDate: "07/10", Amount: 10.0})
+}
+
 func main() {
 	fmt.Println("Starting Payment Gateway ...")
+	SetupCards()
 	var ctx server_context.PGServerContext
 	ctx.Config.ReadFile("../../config/app_config.json")
 	GenerateCryptoParams(&ctx)
